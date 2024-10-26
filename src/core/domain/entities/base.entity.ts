@@ -1,5 +1,10 @@
 export abstract class BaseEntity<TId> {
-  constructor(public readonly id: TId) {}
+  public readonly id!: TId;
+  constructor(id?: TId) {
+    if (id) {
+      this.id = id;
+    }
+  }
 
   equals(entity: BaseEntity<TId>): boolean {
     if (entity === null || entity === undefined) {
