@@ -3,7 +3,11 @@ name: CI
 on:
   push:
     branches:
-      - '**'
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize # Triggers the workflow when new commits are pushed to a pull request
 
 jobs:
   test:
