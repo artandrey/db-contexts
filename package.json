@@ -21,6 +21,9 @@
     ],
     "**/*.{ts,tsx}": "tsc-files --noEmit"
   },
+  "prisma": {
+    "schema": "./src/core/infrastructure/persistence/prisma/schema.prisma"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -36,6 +39,7 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "prettier": "^3.3.3",
+    "prisma": "^5.21.1",
     "testcontainers": "^10.13.2",
     "ts-node": "^10.9.2",
     "tsc-files": "^1.1.4",
@@ -48,6 +52,7 @@
     "@mikro-orm/core": "^6.3.13",
     "@mikro-orm/postgresql": "^6.3.13",
     "@mikro-orm/reflection": "^6.3.13",
+    "@prisma/client": "5.21.1",
     "@types/node": "^22.8.1",
     "@types/pg": "^8.11.10",
     "drizzle-orm": "^0.35.3",
