@@ -51,6 +51,9 @@
     "@types/node": "^22.8.1",
     "@types/pg": "^8.11.10",
     "drizzle-orm": "^0.35.3",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "sequelize": "^6.37.5",
+    "sequelize-typescript": "^2.1.6"
   }
 }
