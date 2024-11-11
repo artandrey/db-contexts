@@ -1,131 +1,118 @@
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import path from 'path';
+import { Client } from 'pg';
 
-import { DbContext } from '~core/application/db-context/db-context.interface';
+import { DrizzleDbContext } from '~core/infrastructure/persistence/drizzle/drizzle-db-context';
+import * as schema from '~core/infrastructure/persistence/drizzle/schema';
 import { User } from '~modules/user/domain/entities/user.entity';
 
-import { DrizzleDbContextFactory } from './helpers/drizzle-db-context.factory';
-import { MikroOrmDbContextFactory } from './helpers/mikro-orm-db-context.factory';
+describe('DbContext + user repository', () => {
+  let postgresContainer: StartedPostgreSqlContainer;
+  let dbContext: DrizzleDbContext;
+  let client: Client;
 
-describe.each([{ factory: new DrizzleDbContextFactory() }, { factory: new MikroOrmDbContextFactory() }])(
-  'DbContext + user repository',
-  ({ factory }) => {
-    let postgresContainer: StartedPostgreSqlContainer;
-    let dbContext: DbContext;
+  beforeAll(async () => {
+    postgresContainer = await new PostgreSqlContainer().start();
 
-    beforeAll(async () => {
-      postgresContainer = await new PostgreSqlContainer().start();
+    client = new Client({
+      connectionString: postgresContainer.getConnectionUri(),
+    });
+    await client.connect();
+    const db = drizzle(client, { schema });
 
-      dbContext = await factory.create({
-        connectionString: postgresContainer.getConnectionUri(),
-      });
-
-      await factory.migrate();
+    await migrate(db, {
+      migrationsFolder: path.join(process.cwd(), 'migrations/drizzle'),
     });
 
-    it('should insert', async () => {
-      await dbContext.startTransaction();
-      const user = new User('John Doe', 'john.doe@example.com', 20);
-      const savedUser = await dbContext.userRepository.save(user);
-      expect(savedUser.id).toBeDefined();
+    dbContext = new DrizzleDbContext(db);
+  });
 
-      const userFromDb = await dbContext.userRepository.findById(savedUser.id);
-      expect(userFromDb).toEqual(expect.objectContaining(user));
-      await dbContext.commitTransaction();
-    });
+  it('should insert', async () => {
+    const user = new User('John Doe', 'john.doe@example.com', 20);
+    const savedUser = await dbContext.userRepository.save(user);
+    expect(savedUser.id).toBeDefined();
 
-    it('should update', async () => {
-      await dbContext.startTransaction();
-      const user = new User('John Doe', 'john.doe@example.com', 20);
-      const savedUser = await dbContext.userRepository.save(user);
-      expect(savedUser.id).toBeDefined();
+    const userFromDb = await dbContext.userRepository.findById(savedUser.id);
+    expect(userFromDb).toEqual(expect.objectContaining(user));
+  });
 
-      savedUser.age = 21;
-      const updatedUser = await dbContext.userRepository.save(savedUser);
-      expect(updatedUser.age).toBe(21);
-      await dbContext.commitTransaction();
-    });
+  it('should update', async () => {
+    const user = new User('John Doe', 'john.doe@example.com', 20);
+    const savedUser = await dbContext.userRepository.save(user);
+    expect(savedUser.id).toBeDefined();
 
-    it('should delete', async () => {
-      await dbContext.startTransaction();
-      const user = new User('John Doe', 'john.doe@example.com', 20);
-      const savedUser = await dbContext.userRepository.save(user);
-      expect(savedUser.id).toBeDefined();
+    savedUser.age = 21;
+    const updatedUser = await dbContext.userRepository.save(savedUser);
+    expect(updatedUser.age).toBe(21);
+  });
 
-      await dbContext.userRepository.delete(savedUser.id);
-      const userFromDb = await dbContext.userRepository.findById(savedUser.id);
+  it('should delete', async () => {
+    const user = new User('John Doe', 'john.doe@example.com', 20);
+    const savedUser = await dbContext.userRepository.save(user);
+    expect(savedUser.id).toBeDefined();
 
-      expect(userFromDb).toBeNull();
-      await dbContext.commitTransaction();
-    });
+    await dbContext.userRepository.delete(savedUser.id);
+    const userFromDb = await dbContext.userRepository.findById(savedUser.id);
 
-    it('should find all', async () => {
-      await dbContext.startTransaction();
-      const user = new User('John Doe', 'john.doe@example.com', 20);
+    expect(userFromDb).toBeNull();
+  });
 
-      await dbContext.userRepository.save(user);
+  it('should find all', async () => {
+    const user = new User('John Doe', 'john.doe@example.com', 20);
 
-      const users = await dbContext.userRepository.findAll();
-      expect(users).toHaveLength(1);
-      await dbContext.commitTransaction();
-    });
+    await dbContext.userRepository.save(user);
 
-    it('should rollback', async () => {
-      await dbContext.startTransaction();
-      const user = new User('John Doe', 'john.doe@example.com', 20);
-      const result = await dbContext.userRepository.save(user);
-      expect(result.id).toBeDefined();
-      await dbContext.rollbackTransaction();
+    const users = await dbContext.userRepository.findAll();
+    expect(users).toHaveLength(1);
+  });
 
-      const userFromDb = await dbContext.userRepository.findById(result.id);
-      expect(userFromDb).toBeNull();
-    });
+  it('should rollback', async () => {
+    await dbContext.startTransaction();
+    const user = new User('John Doe', 'john.doe@example.com', 20);
+    const result = await dbContext.userRepository.save(user);
+    expect(result.id).toBeDefined();
+    await dbContext.rollbackTransaction();
 
-    it('should commit', async () => {
-      await dbContext.startTransaction();
+    const userFromDb = await dbContext.userRepository.findById(result.id);
+    expect(userFromDb).toBeNull();
+  });
 
-      const user = new User('John Doe', 'john.doe@example.com', 20);
-      const result = await dbContext.userRepository.save(user);
-      expect(result.id).toBeDefined();
+  it('should commit', async () => {
+    await dbContext.startTransaction();
 
-      await dbContext.commitTransaction();
+    const user = new User('John Doe', 'john.doe@example.com', 20);
+    const result = await dbContext.userRepository.save(user);
+    expect(result.id).toBeDefined();
 
-      const userFromDb = await dbContext.userRepository.findById(result.id);
-      expect(userFromDb).toEqual(expect.objectContaining(user));
-    });
+    await dbContext.commitTransaction();
 
-    it('should throw error when commit without transaction', async () => {
-      await expect(dbContext.commitTransaction()).rejects.toThrow();
-    });
+    const userFromDb = await dbContext.userRepository.findById(result.id);
+    expect(userFromDb).toEqual(expect.objectContaining(user));
+  });
 
-    it('should throw error when rollback without transaction', async () => {
-      await expect(dbContext.rollbackTransaction()).rejects.toThrow();
-    });
+  it('should throw error when commit without transaction', async () => {
+    await expect(dbContext.commitTransaction()).rejects.toThrow();
+  });
 
-    it('should throw when start transaction twice', async () => {
-      await dbContext.startTransaction();
+  it('should throw error when rollback without transaction', async () => {
+    await expect(dbContext.rollbackTransaction()).rejects.toThrow();
+  });
 
-      await expect(dbContext.startTransaction()).rejects.toThrow();
+  it('should throw when start transaction twice', async () => {
+    await dbContext.startTransaction();
 
-      await dbContext.commitTransaction();
-    });
+    await expect(dbContext.startTransaction()).rejects.toThrow();
+  });
 
-    afterEach(async () => {
-      try {
-        await dbContext.rollbackTransaction();
-      } catch (error) {}
-      await factory.close();
-      dbContext = await factory.create({
-        connectionString: postgresContainer.getConnectionUri(),
-      });
-      await dbContext.startTransaction();
-      const users = await dbContext.userRepository.findAll();
-      await Promise.all(users.map((user) => dbContext.userRepository.delete(user.id)));
-      await dbContext.commitTransaction();
-    });
+  afterEach(async () => {
+    const users = await dbContext.userRepository.findAll();
+    await Promise.all(users.map((user) => dbContext.userRepository.delete(user.id)));
+  });
 
-    afterAll(async () => {
-      await factory.close();
-      await postgresContainer.stop();
-    });
-  },
-);
+  afterAll(async () => {
+    await client.end();
+    await postgresContainer.stop();
+  });
+});
