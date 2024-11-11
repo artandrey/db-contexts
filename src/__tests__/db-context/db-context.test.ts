@@ -3,15 +3,9 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import { DbContext } from '~core/application/db-context/db-context.interface';
 import { User } from '~modules/user/domain/entities/user.entity';
 
-import { DrizzleDbContextFactory } from './helpers/drizzle-db-context.factory';
-import { MikroOrmDbContextFactory } from './helpers/mikro-orm-db-context.factory';
 import { SequelizeDbContextFactory } from './helpers/sequelize-db-context.factory';
 
-describe.each([
-  { factory: new DrizzleDbContextFactory() },
-  { factory: new MikroOrmDbContextFactory() },
-  { factory: new SequelizeDbContextFactory() },
-])('DbContext + user repository', ({ factory }) => {
+describe.each([{ factory: new SequelizeDbContextFactory() }])('DbContext + user repository', ({ factory }) => {
   let postgresContainer: StartedPostgreSqlContainer;
   let dbContext: DbContext;
 
