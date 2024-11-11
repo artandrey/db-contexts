@@ -22,15 +22,7 @@ export class DrizzleUserRepository implements UserRepository {
   }
 
   async save(user: User): Promise<User> {
-    const persistence = DrizzleUserMapper.toPersistence(user);
-    const [savedUser] = await this.db
-      .insert(users)
-      .values(persistence)
-      .onConflictDoUpdate({
-        target: [users.id],
-        set: persistence,
-      })
-      .returning();
+    const [savedUser] = await this.db.insert(users).values(DrizzleUserMapper.toPersistence(user)).returning();
     return DrizzleUserMapper.toDomain(savedUser);
   }
 
