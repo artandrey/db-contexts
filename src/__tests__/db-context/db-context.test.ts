@@ -3,13 +3,14 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers
 import { DbContext } from '~core/application/db-context/db-context.interface';
 import { User } from '~modules/user/domain/entities/user.entity';
 
+import { DrizzleDbContextFactory } from './helpers/drizzle-db-context.factory';
 import { PrismaDbContextFactory } from './helpers/prisma-db-context.factory';
 import { SequelizeDbContextFactory } from './helpers/sequelize-db-context.factory';
 
 describe.each([
+  { factory: new DrizzleDbContextFactory() },
   { factory: new PrismaDbContextFactory() },
   { factory: new SequelizeDbContextFactory() },
-  { factory: new MikroOrmDbContextFactory() },
 ])('DbContext + user repository', ({ factory }) => {
   let postgresContainer: StartedPostgreSqlContainer;
   let dbContext: DbContext;
