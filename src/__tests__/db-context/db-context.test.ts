@@ -48,6 +48,16 @@ describe.each([
     await dbContext.commitTransaction();
   });
 
+  it('should update', async () => {
+    const user = new User('John Doe', 'john.doe@example.com', 20);
+    const savedUser = await dbContext.userRepository.save(user);
+    expect(savedUser.id).toBeDefined();
+
+    savedUser.age = 21;
+    const updatedUser = await dbContext.userRepository.save(savedUser);
+    expect(updatedUser.age).toBe(21);
+  });
+
   it('should delete', async () => {
     await dbContext.startTransaction();
     const user = new User('John Doe', 'john.doe@example.com', 20);
